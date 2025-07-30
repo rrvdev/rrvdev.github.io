@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RACHA GT - App Inteligente</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="1751322682825.png"
+ class="sidebar-logo" alt="RACHA GT Logo">
+        <h1 class="sidebar-title">RACHA GT</h1>
+        <button id="btn-close-sidebar" class="btn-icon" aria-label="Fechar menu">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <nav>
+        <button data-target="cadastro" class="nav-button active"><i class="fas fa-user-plus"></i> <span>Cadastro</span></button>
+        <button data-target="jogadores" class="nav-button"><i class="fas fa-users"></i> <span>Jogadores</span></button>
+        <button data-target="sorteio" class="nav-button"><i class="fas fa-random"></i> <span>Sorteio</span></button>
+        <button data-target="jogo" class="nav-button"><i class="fas fa-futbol"></i> <span>Modo Jogo</span></button>
+        <button data-target="avaliacao" class="nav-button"><i class="fas fa-star-half-alt"></i> <span>Avaliação</span></button>
+        <button data-target="dashboard" class="nav-button"><i class="fas fa-chart-line"></i> <span>Dashboard</span></button>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="main-content">
+      <header class="main-header">
+        <button id="btn-toggle-sidebar" class="btn-icon" aria-label="Abrir menu">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h2 id="section-title">Cadastro de Jogadores</h2>
+      </header>
+
+      <div class="page-content">
+        <section id="cadastro" class="active section">
+          <form id="form-cadastro">
+            <label for="nome">Nome do Jogador</label>
+            <input type="text" id="nome" placeholder="Ex: Lionel Messi" required />
+            <label for="setor">Setor</label>
+            <select id="setor" required>
+              <option value="">Selecione o setor</option>
+              <option value="AMIGOS">AMIGOS</option>
+              <option value="ENG">ENG</option>
+              <option value="NAT">NAT</option>
+              <option value="NAT MATRIZ">NAT MATRIZ</option>
+              <option value="GOLEIRO">GOLEIRO</option>
+              <option value="AGR">AGR</option>
+            </select>
+            <button type="submit" class="btn-primary">Adicionar Jogador</button>
+          </form>
+        </section>
+
+        <section id="jogadores" class="section">
+            <div class="import-section">
+                <h3><i class="fas fa-file-import"></i> Importar Lista de Jogadores</h3>
+                <p>Selecione um arquivo .csv ou .txt (formato: Nome,Setor).</p>
+                <div class="import-controls">
+                    <input type="file" id="import-file-input" accept=".txt,.csv">
+                    <button id="btn-import" class="btn-secondary">Importar</button>
+                </div>
+            </div>
+            <hr class="section-divider">
+            <div id="lista-completa-jogadores" class="cards-container"></div>
+        </section>
+
+        <section id="sorteio" class="section">
+          <form id="form-sorteio" class="form-inline">
+            <div class="form-group">
+                <label for="jogadores-por-time">Jogadores por time:</label>
+                <input type="number" id="jogadores-por-time" value="5" min="1" />
+            </div>
+            <div class="form-group">
+                <label for="numero-de-times">Número de times:</label>
+                <input type="number" id="numero-de-times" value="2" min="2" />
+            </div>
+            <button type="submit" id="btn-sortear" class="btn-primary">Sortear Times</button>
+          </form>
+          <div id="round-controls" class="round-controls" style="display: none;">
+            <button id="btn-next-match" class="btn-primary">Iniciar Próxima Partida</button>
+          </div>
+          <div class="teams-grid" id="teams-grid"></div>
+          <div class="reserves-container" id="reserves-container" style="display: none;">
+            <h3><i class="fas fa-user-clock"></i> Reservas</h3>
+            <ul id="reserves-list"></ul>
+          </div>
+          <div class="next-matches-container" id="next-matches-container" style="display: none;">
+            <h3><i class="fas fa-forward"></i> Próximas Partidas</h3>
+            <ul id="next-matches-list"></ul>
+          </div>
+        </section>
+
+        <section id="jogo" class="section">
+          <div class="game-setup">
+            <label for="game-duration">Duração da Partida (minutos):</label>
+            <input type="number" id="game-duration" value="10" min="1">
+          </div>
+          <div class="timer" id="cronometro">00:00</div>
+          <div class="timer-buttons">
+            <button id="btn-start-pause" class="btn-primary">Iniciar</button>
+            <button id="btn-reset" class="btn-secondary">Resetar Rodada</button>
+          </div>
+          <h3>Controle de Gols</h3>
+          <div id="controle-gols" class="cards-container"></div>
+        </section>
+
+        <section id="avaliacao" class="section">
+          <div id="avaliacao-bloqueada" class="locked-state">
+            <i class="fas fa-lock"></i>
+            <p>A votação será liberada após o término de uma partida no Modo Jogo.</p>
+          </div>
+          <div id="avaliacao-liberada" style="display: none;">
+            <div class="voter-login">
+              <label for="voter-select">Selecione seu nome para votar:</label>
+              <select id="voter-select"></select>
+            </div>
+            <div id="avaliacao-lista" class="cards-container"></div>
+            <button id="btn-salvar-avaliacao" class="btn-primary">Enviar Minha Avaliação</button>
+          </div>
+        </section>
+
+        <section id="dashboard" class="section">
+          <div class="dashboard-grid">
+            <div class="ranking-list">
+              <h2><i class="fas fa-trophy"></i> Artilheiros</h2>
+              <ol id="artilheiros-container"></ol>
+            </div>
+            <div class="ranking-list">
+              <h2><i class="fas fa-star"></i> Melhores Jogadores</h2>
+              <ol id="melhores-jogadores-container"></ol>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="edit-modal" class="modal-container">
+    <div class="modal-content">
+      <h3>Editar Jogador</h3>
+      <form id="form-edit">
+          <label for="edit-nome">Nome do Jogador</label>
+          <input type="text" id="edit-nome" required />
+          <label for="edit-setor">Setor</label>
+          <select id="edit-setor" required>
+            <option value="">Selecione o setor</option>
+            <option value="AMIGOS">AMIGOS</option>
+            <option value="ENG">ENG</option>
+            <option value="NAT">NAT</option>
+            <option value="NAT MATRIZ">NAT MATRIZ</option>
+            <option value="GOLEIRO">GOLEIRO</option>
+            <option value="AGR">AGR</option>
+          </select>
+          <div class="modal-buttons">
+            <button type="submit" class="btn-primary">Salvar Alterações</button>
+            <button type="button" id="edit-cancel-btn" class="btn-secondary">Cancelar</button>
+          </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="confirm-modal" class="modal-container">
+    <div class="modal-content">
+      <p id="modal-text">Você tem certeza?</p>
+      <div class="modal-buttons">
+        <button id="modal-confirm-btn" class="btn-danger">Confirmar</button>
+        <button id="modal-cancel-btn" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- Templates -->
+  <template id="template-card-jogador">
+    <div class="card">
+      <div class="card-actions">
+        <button class="btn-card-action btn-edit-player" aria-label="Editar jogador"><i class="fas fa-pencil-alt"></i></button>
+        <button class="btn-card-action btn-delete-player" aria-label="Deletar jogador"><i class="fas fa-trash-alt"></i></button>
+      </div>
+      <div class="decimal-stars"></div>
+      <h3></h3>
+      <div class="stats">
+        <div class="stat setor"><i class="fas fa-users-cog"></i> Setor: <span></span></div>
+        <div class="stat partidas"><i class="fas fa-shield-alt"></i> Partidas: <span></span></div>
+        <div class="stat gols"><i class="fas fa-futbol"></i> Gols: <span></span></div>
+      </div>
+    </div>
+  </template>
+
+  <template id="template-card-gol">
+    <div class="card">
+      <h3></h3>
+      <div class="gol-controls">
+        <button class="btn-gol" data-action="remove">-</button>
+        <span>0</span>
+        <button class="btn-gol" data-action="add">+</button>
+      </div>
+    </div>
+  </template>
+
+  <template id="template-card-avaliacao">
+     <div class="card">
+      <h3></h3>
+      <div class="rating-slider-container">
+        <input type="range" min="1" max="5" value="3" step="0.1" class="rating-slider">
+        <span class="rating-value">3.0</span>
+      </div>
+    </div>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
