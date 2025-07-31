@@ -175,46 +175,47 @@
     </div>
   </div>
 
-  <div id="toast-container"></div>
+ <div id="toast-container"></div>
 
-  <!-- Templates -->
-  <template id="template-card-jogador">
-    <div class="card">
-      <div class="card-actions">
-        <button class="btn-card-action btn-edit-player" aria-label="Editar jogador"><i class="fas fa-pencil-alt"></i></button>
-        <button class="btn-card-action btn-delete-player" aria-label="Deletar jogador"><i class="fas fa-trash-alt"></i></button>
-      </div>
-      <div class="decimal-stars"></div>
-      <h3></h3>
-      <div class="stats">
-        <div class="stat setor"><i class="fas fa-users-cog"></i> Setor: <span></span></div>
-        <div class="stat partidas"><i class="fas fa-shield-alt"></i> Partidas: <span></span></div>
-        <div class="stat gols"><i class="fas fa-futbol"></i> Gols: <span></span></div>
-      </div>
+    <template id="template-card-jogador">
+  <div class="card">
+    <div class="card-actions">
+      <button class="btn-card-action btn-edit-player" aria-label="Editar jogador"><i class="fas fa-pencil-alt"></i></button>
+      <button class="btn-card-action btn-delete-player" aria-label="Deletar jogador"><i class="fas fa-trash-alt"></i></button>
     </div>
-  </template>
-
-  <template id="template-card-gol">
-    <div class="card">
-      <h3></h3>
-      <div class="gol-controls">
-        <button class="btn-gol" data-action="remove">-</button>
-        <span>0</span>
-        <button class="btn-gol" data-action="add">+</button>
-      </div>
+    <div class="decimal-stars"></div>
+    <h3></h3>
+    <div class="stats">
+      <div class="stat setor"><i class="fas fa-users-cog"></i> Setor: <span></span></div>
+      <div class="stat partidas"><i class="fas fa-shield-alt"></i> Partidas: <span></span></div>
+      <div class="stat gols"><i class="fas fa-futbol"></i> Gols: <span></span></div>
     </div>
-  </template>
+  </div>
+</template>
 
-  <template id="template-card-avaliacao">
-     <div class="card">
-      <h3></h3>
-      <div class="rating-slider-container">
-        <input type="range" min="1" max="5" value="3" step="0.1" class="rating-slider">
-        <span class="rating-value">3.0</span>
-      </div>
+<template id="template-card-gol">
+  <div class="card">
+    <h3></h3>
+    <div class="gol-controls">
+      <button class="btn-gol" data-action="remove">-</button>
+      <span>0</span>
+      <button class="btn-gol" data-action="add">+</button>
     </div>
-  </template>
+  </div>
+</template>
 
-  <script src="script.js"></script>
+<template id="template-card-avaliacao">
+   <div class="card">
+    <h3></h3>
+    <div class="rating-slider-container">
+      <input type="range" min="1" max="5" value="3" step="0.1" class="rating-slider">
+      <span class="rating-value">3.0</span>
+    </div>
+  </div>
+</template>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="script.js"></script>
 </body>
 </html>
