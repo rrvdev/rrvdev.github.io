@@ -2,6 +2,13 @@
 (function () {
   'use strict';
 
+  // --- INICIALIZAÇÃO DO SUPABASE ---
+  const SUPABASE_URL = 'https://nvyqxwvrqnavdbicecfx.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52eXF4d3ZycW5hdmRiaWNlY2Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4Mjg2MDUsImV4cCI6MjA2OTQwNDYwNX0.aAEqYH0sEwPbaNJ4Dlq6WgC7AN8FuHlwo-3RuRMjBKA';
+  
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
   // --- SELEÇÃO DE ELEMENTOS DO DOM ---
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
@@ -50,7 +57,7 @@
   const importBtn = document.getElementById('btn-import');
 
   // --- ESTADO DA APLICAÇÃO ---
-  let jogadores = JSON.parse(localStorage.getItem('jogadores')) || [];
+  let jogadores = [];
   let times = [];
   let reservas = [];
   
@@ -59,7 +66,7 @@
   let jogoEmAndamento = false;
 
   let rodada = {
-    partidas: [], // Fila de partidas, ex: [[timeA, timeB], [timeC, timeD]]
+    partidas: [],
     partidaAtualIndex: -1,
     finalizada: true,
   };
@@ -73,9 +80,6 @@
   };
 
   // --- UTILITÁRIOS ---
-  const salvarNoLocalStorage = () => localStorage.setItem('jogadores', JSON.stringify(jogadores));
-  const gerarId = () => '_' + Math.random().toString(36).substr(2, 9);
-  
   const showToast = (message) => {
     const toastContainer = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -163,9 +167,17 @@
 
   const criarCardJogador = (player) => {
     const cardTemplate = document.getElementById('template-card-jogador');
-    const cardNode = cardTemplate.content.cloneNode(true);
-    const card = cardNode.querySelector('.card');
+    if (!cardTemplate) return null; // Adiciona uma verificação de segurança
     
+    const cardNode = cardTemplate.content.cloneNode(true);
+    
+    // ✅ <<< CORREÇÃO PRINCIPAL AQUI
+    // Trocamos querySelector por firstElementChild, que é mais direto e robusto
+    // para pegar o elemento principal de um template.
+    const card = cardNode.firstElementChild; 
+    
+    if (!card) return null; // Adiciona outra verificação de segurança
+
     card.dataset.id = player.id;
     card.querySelector('h3').textContent = player.nome;
     card.querySelector('.decimal-stars').innerHTML = renderizarEstrelasDecimais(player.estrelas);
@@ -183,7 +195,12 @@
       return;
     }
     const jogadoresOrdenados = [...jogadores].sort((a, b) => a.nome.localeCompare(b.nome));
-    jogadoresOrdenados.forEach(jog => listaCompletaJogadoresContainer.appendChild(criarCardJogador(jog)));
+    jogadoresOrdenados.forEach(jog => {
+        const cardElement = criarCardJogador(jog);
+        if (cardElement) { // Adiciona o card apenas se ele foi criado com sucesso
+            listaCompletaJogadoresContainer.appendChild(cardElement);
+        }
+    });
   };
 
   const renderizarDashboard = () => {
@@ -232,7 +249,9 @@
       avaliacaoLiberada.style.display = 'block';
       
       voterSelect.innerHTML = '<option value="">Selecione seu nome</option>';
-      jogadores.forEach(j => {
+      const jogadoresOrdenados = [...jogadores].sort((a, b) => a.nome.localeCompare(b.nome));
+
+      jogadoresOrdenados.forEach(j => {
         const option = document.createElement('option');
         option.value = j.id;
         option.textContent = j.nome;
@@ -315,26 +334,44 @@
   };
 
   // --- LÓGICA PRINCIPAL ---
-  const handleCadastro = (e) => {
+
+  const handleCadastro = async (e) => {
     e.preventDefault();
     const nome = e.target.elements.nome.value.trim();
     const setor = e.target.elements.setor.value;
     if (!nome || !setor) return showToast('Preencha todos os campos!');
     if (jogadores.some(j => j.nome.toLowerCase() === nome.toLowerCase())) return showToast('Jogador já cadastrado!');
-    jogadores.push({ id: gerarId(), nome, setor, estrelas: 1.0, partidas: 0, gols: 0, totalNotas: 1, numVotos: 1 });
-    salvarNoLocalStorage();
+    
+    const novoJogador = { nome, setor };
+
+    const { error } = await supabaseClient
+      .from('jogadores')
+      .insert(novoJogador);
+
+    if (error) {
+      console.error('Erro ao adicionar jogador:', error);
+      return showToast('Erro ao adicionar jogador.');
+    }
+    
+    // A UI será atualizada pela função em tempo real.
+    // Apenas damos o feedback para o usuário.
     showToast(`${nome} foi adicionado!`);
     e.target.reset();
   };
 
-  const handleDeletarJogador = (id) => {
-    jogadores = jogadores.filter(j => j.id !== id);
-    salvarNoLocalStorage();
-    showToast('Jogador excluído.');
-    const activeSectionId = document.querySelector('.section.active').id;
-    if (activeSectionId === 'jogadores' || activeSectionId === 'dashboard') {
-        mudarTela(activeSectionId);
+  const handleDeletarJogador = async (id) => {
+    const { error } = await supabaseClient
+      .from('jogadores')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erro ao deletar jogador:', error);
+      return showToast('Erro ao excluir jogador.');
     }
+
+    // A UI será atualizada pela função em tempo real.
+    showToast('Jogador excluído.');
   };
   
   const handleSortearTimes = (e) => {
@@ -399,7 +436,7 @@
     showToast("Próxima partida pronta no Modo Jogo!");
   };
 
-  const finalizarPartida = () => {
+  const finalizarPartida = async () => {
     clearInterval(cronometroInterval);
     cronometroInterval = null;
     jogoEmAndamento = false;
@@ -408,14 +445,27 @@
     cronometroDisplay.classList.add('finished');
     showToast("Partida Finalizada! Votação liberada.");
     
-    partidaAtual.jogadores.forEach(jogadorDaPartida => {
+    const updates = partidaAtual.jogadores.map(jogadorDaPartida => {
       const jogadorOriginal = jogadores.find(j => j.id === jogadorDaPartida.id);
       if(jogadorOriginal) {
-        jogadorOriginal.partidas = (jogadorOriginal.partidas || 0) + 1;
-        jogadorOriginal.gols = (jogadorOriginal.gols || 0) + (partidaAtual.gols[jogadorDaPartida.id] || 0);
+        const novasPartidas = (jogadorOriginal.partidas || 0) + 1;
+        const novosGols = (jogadorOriginal.gols || 0) + (partidaAtual.gols[jogadorDaPartida.id] || 0);
+        return supabaseClient
+          .from('jogadores')
+          .update({ partidas: novasPartidas, gols: novosGols })
+          .eq('id', jogadorOriginal.id);
       }
+      return Promise.resolve();
     });
-    salvarNoLocalStorage();
+
+    const results = await Promise.all(updates);
+    const errorResult = results.find(res => res.error);
+    
+    if (errorResult) {
+      console.error("Erro ao atualizar estatísticas da partida:", errorResult.error);
+      showToast("Erro ao salvar dados da partida.");
+    }
+    
     renderizarAvaliacoes();
 
     if (rodada.partidaAtualIndex < rodada.partidas.length - 1) {
@@ -462,7 +512,7 @@
         renderizarTimes();
     }
 
-    partidaAtual = { id: gerarId(), jogadores: [], votos: {}, gols: {}, finalizada: false };
+    partidaAtual = { id: null, jogadores: [], votos: {}, gols: {}, finalizada: false };
     renderizarCronometro();
     renderizarControleGols();
     renderizarAvaliacoes();
@@ -471,7 +521,7 @@
     if(resetCompleto) showToast("Rodada resetada.");
   };
 
-  const handleSalvarAvaliacoes = () => {
+  const handleSalvarAvaliacoes = async () => {
     const eleitorId = voterSelect.value;
     if (!eleitorId) return showToast("Por favor, selecione seu nome para votar.");
 
@@ -485,16 +535,32 @@
 
     partidaAtual.votos[eleitorId] = ratings;
     
-    Object.keys(ratings).forEach(jogadorId => {
+    const updates = Object.keys(ratings).map(jogadorId => {
         const jogador = jogadores.find(j => j.id === jogadorId);
-        if(!jogador) return;
+        if(!jogador) return Promise.resolve();
         
-        jogador.totalNotas = (jogador.totalNotas || 0) + ratings[jogadorId];
-        jogador.numVotos = (jogador.numVotos || 0) + 1;
-        jogador.estrelas = jogador.totalNotas / jogador.numVotos;
+        const novoTotalNotas = (jogador.totalNotas || 0) + ratings[jogadorId];
+        const novoNumVotos = (jogador.numVotos || 0) + 1;
+        const novasEstrelas = novoTotalNotas / novoNumVotos;
+
+        return supabaseClient
+            .from('jogadores')
+            .update({
+                totalNotas: novoTotalNotas,
+                numVotos: novoNumVotos,
+                estrelas: novasEstrelas
+            })
+            .eq('id', jogadorId);
     });
 
-    salvarNoLocalStorage();
+    const results = await Promise.all(updates);
+    const errorResult = results.find(res => res.error);
+
+    if (errorResult) {
+        console.error("Erro ao salvar avaliações:", errorResult.error);
+        return showToast("Erro ao salvar avaliações.");
+    }
+    
     showToast("Obrigado pelo seu voto!");
     renderizarAvaliacoes();
   };
@@ -517,7 +583,7 @@
     reader.readAsText(file);
   };
 
-  const parseAndAddPlayers = (textContent) => {
+  const parseAndAddPlayers = async (textContent) => {
     let importedCount = 0;
     let skippedCount = 0;
     const lines = textContent.split('\n').map(line => line.trim());
@@ -526,6 +592,7 @@
         lines.shift();
     }
 
+    const novosJogadores = [];
     lines.forEach(line => {
         if (!line) return;
         const parts = line.split(',');
@@ -538,24 +605,26 @@
         }
 
         const setor = parts[1] ? parts[1].trim().toUpperCase() : 'AMIGOS';
-        jogadores.push({
-            id: gerarId(), nome, setor, estrelas: 1.0, partidas: 0, gols: 0, totalNotas: 1, numVotos: 1
-        });
+        novosJogadores.push({ nome, setor });
         importedCount++;
     });
 
-    salvarNoLocalStorage();
-    renderizarListaCompletaJogadores();
+    if (novosJogadores.length > 0) {
+      const { error } = await supabaseClient.from('jogadores').insert(novosJogadores);
+      if (error) {
+        console.error("Erro na importação em massa:", error);
+        return showToast("Erro ao importar jogadores.");
+      }
+    }
+    
     showToast(`${importedCount} jogadores importados. ${skippedCount} duplicados ignorados.`);
     importFileInput.value = '';
   };
 
-  const handleEditPlayer = (e) => {
+  const handleEditPlayer = async (e) => {
     e.preventDefault();
     const playerId = e.target.dataset.editingId;
-    const jogador = jogadores.find(j => j.id === playerId);
-    if (!jogador) return;
-
+    
     const novoNome = editNomeInput.value.trim();
     const novoSetor = editSetorSelect.value;
 
@@ -564,17 +633,57 @@
         return;
     }
 
-    jogador.nome = novoNome;
-    jogador.setor = novoSetor;
+    const { error } = await supabaseClient
+      .from('jogadores')
+      .update({ nome: novoNome, setor: novoSetor })
+      .eq('id', playerId)
 
-    salvarNoLocalStorage();
+    if (error) {
+      console.error('Erro ao editar jogador:', error);
+      return showToast("Erro ao atualizar jogador.");
+    }
+    
     closeEditModal();
     showToast("Jogador atualizado com sucesso!");
-    renderizarListaCompletaJogadores();
+  };
+
+  // --- FUNÇÕES DE DADOS (SUPABASE) ---
+  
+  const carregarJogadores = async () => {
+    const { data, error } = await supabaseClient
+        .from('jogadores')
+        .select('*')
+        .order('nome', { ascending: true });
+
+    if (error) {
+        console.error('Erro ao carregar jogadores:', error);
+        showToast('Erro ao carregar jogadores.');
+    } else {
+        jogadores = data;
+        // Re-renderiza a tela ativa que depende dos dados
+        const activeSectionId = document.querySelector('.section.active')?.id;
+        if (activeSectionId === 'jogadores') renderizarListaCompletaJogadores();
+        if (activeSectionId === 'dashboard') renderizarDashboard();
+        if (activeSectionId === 'avaliacao') renderizarAvaliacoes();
+    }
+  };
+
+  const escutarMudancasJogadores = () => {
+    supabaseClient.channel('jogadores_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jogadores' },
+        (payload) => {
+          console.log('Mudança em tempo real recebida!', payload);
+          // Quando algo muda no banco, simplesmente recarrega os dados.
+          carregarJogadores();
+        }
+      )
+      .subscribe();
   };
 
   // --- INICIALIZAÇÃO E EVENTOS ---
-  const init = () => {
+  const init = async () => {
     modalCancelBtn.addEventListener('click', closeConfirmModal);
     editCancelBtn.addEventListener('click', closeEditModal);
 
@@ -600,8 +709,14 @@
         if (!targetButton) return;
         const card = targetButton.closest('.card');
         const playerId = card.dataset.id;
+        const jogador = jogadores.find(j => j.id === playerId);
+
         if (targetButton.classList.contains('btn-edit-player')) {
             openEditModal(playerId);
+        } else if (targetButton.classList.contains('btn-delete-player')) {
+            openConfirmModal(`Tem certeza que deseja excluir ${jogador.nome}?`, () => {
+                handleDeletarJogador(playerId);
+            });
         }
     });
 
@@ -623,6 +738,10 @@
         valueSpan.textContent = parseFloat(e.target.value).toFixed(1);
       }
     });
+
+    // Carrega dados e escuta por mudanças ao iniciar
+    await carregarJogadores();
+    escutarMudancasJogadores();
 
     mudarTela('cadastro');
     renderizarCronometro();
