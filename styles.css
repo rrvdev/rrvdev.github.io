@@ -133,7 +133,6 @@ form input:focus, form select:focus { outline: none; border-color: var(--accent-
 #teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
 .team { background-color: var(--bg-secondary); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--bg-tertiary); }
 .team h3 { margin: 0 0 1rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid; border-image-slice: 1; }
-.team p { margin: 0.5rem 0; }
 .team .total-stars { margin-top: 1rem; font-weight: 600; color: var(--text-secondary); }
 .reserves-container, .next-matches-container { margin-top: 2rem; background-color: var(--bg-secondary); padding: 1.5rem; border-radius: 12px; }
 .reserves-container h3, .next-matches-container h3 { margin: 0 0 1rem 0; }
@@ -154,7 +153,7 @@ form input:focus, form select:focus { outline: none; border-color: var(--accent-
 
 /* ESTILOS PARA EDIÇÃO DE TIMES */
 .team-player-list {
-  min-height: 50px; /* Garante que mesmo um time vazio tenha uma área para soltar jogadores */
+  min-height: 50px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -190,4 +189,14 @@ form input:focus, form select:focus { outline: none; border-color: var(--accent-
 .player-ghost {
   opacity: 0.4;
   background: var(--accent-secondary);
+}
+
+/* RODAPÉ */
+.main-footer {
+  text-align: center;
+  padding: 2rem 1.5rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
