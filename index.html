@@ -94,8 +94,8 @@
           </div>
           <div class="teams-grid" id="teams-grid"></div>
           <div class="reserves-container" id="reserves-container" style="display: none;">
-            <h3><i class="fas fa-user-clock"></i> Reservas</h3>
-            <ul id="reserves-list"></ul>
+            <h3><i class="fas fa-user-clock"></i> Reservas (Arraste para um time)</h3>
+            <ul id="reserves-list" class="team-player-list"></ul>
           </div>
           <div class="next-matches-container" id="next-matches-container" style="display: none;">
             <h3><i class="fas fa-forward"></i> Próximas Partidas</h3>
@@ -110,10 +110,11 @@
           </div>
           <div class="timer" id="cronometro">00:00</div>
           <div class="timer-buttons">
-            <button id="btn-start-pause" class="btn-primary">Iniciar</button>
+            <button id="btn-start-pause" class="btn-primary">Iniciar Timer</button>
+            <button id="btn-finalizar-partida" class="btn-danger">Finalizar Partida</button>
             <button id="btn-reset" class="btn-secondary">Resetar Rodada</button>
           </div>
-          <h3>Controle de Gols</h3>
+          <h3>Controle de Gols (Jogadores Presentes)</h3>
           <div id="controle-gols" class="cards-container"></div>
         </section>
 
@@ -191,9 +192,19 @@
 
   <template id="template-card-jogador">
     <div class="card">
-      <div class="card-actions">
-        <button class="btn-card-action btn-edit-player" aria-label="Editar jogador"><i class="fas fa-pencil-alt"></i></button>
-        <button class="btn-card-action btn-delete-player" aria-label="Deletar jogador"><i class="fas fa-trash-alt"></i></button>
+      <div class="card-header">
+        <div class="presence-toggle">
+            <span class="presence-label">Ausente</span>
+            <label class="switch">
+                <input type="checkbox" class="toggle-presenca">
+                <span class="slider round"></span>
+            </label>
+            <span class="presence-label">Presente</span>
+        </div>
+        <div class="card-actions">
+            <button class="btn-card-action btn-edit-player" aria-label="Editar jogador"><i class="fas fa-pencil-alt"></i></button>
+            <button class="btn-card-action btn-delete-player" aria-label="Deletar jogador"><i class="fas fa-trash-alt"></i></button>
+        </div>
       </div>
       <div class="decimal-stars"></div>
       <h3></h3>
