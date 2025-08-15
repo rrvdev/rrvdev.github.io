@@ -47,6 +47,7 @@
   const importFileInput = document.getElementById('import-file-input');
   const importBtn = document.getElementById('btn-import');
   const salvarTimesEditadosBtn = document.getElementById('btn-salvar-times-editados');
+  const finalizarPartidaBtn = document.getElementById('btn-finalizar-partida');
 
   // --- ESTADO DA APLICAÇÃO ---
   let jogadores = [];
@@ -56,6 +57,7 @@
   let cronometroInterval = null;
   let tempoRestanteSegundos = 0;
   let jogoEmAndamento = false;
+  let golsDaRodada = {};
   let rodada = {
     partidas: [],
     partidaAtualIndex: -1,
@@ -161,7 +163,15 @@
     const cardNode = cardTemplate.content.cloneNode(true);
     const card = cardNode.firstElementChild;
     if (!card) return null;
+    
     card.dataset.id = player.id;
+    card.classList.toggle('is-absent', !player.presente);
+
+    const toggleInput = card.querySelector('.toggle-presenca');
+    if (toggleInput) {
+        toggleInput.checked = player.presente;
+    }
+
     card.querySelector('h3').textContent = player.nome;
     card.querySelector('.decimal-stars').innerHTML = renderizarEstrelasDecimais(player.estrelas);
     card.querySelector('.setor span').textContent = player.setor;
@@ -183,10 +193,7 @@
       }
     });
   };
-
-  // ✅ FUNÇÃO DO DASHBOARD ATUALIZADA (MOSTRA TODOS OS JOGADORES)
   const renderizarDashboard = () => {
-    // Ordena todos os jogadores por gols, sem limitar a 10
     const artilheiros = [...jogadores].sort((a, b) => (b.gols || 0) - (a.gols || 0));
     artilheirosContainer.innerHTML = artilheiros.length === 0 ? '<li>Nenhum gol marcado.</li>' : '';
     artilheiros.forEach((jog, index) => {
@@ -196,8 +203,6 @@
                       <span class="player-stat">${jog.gols || 0} Gols</span>`;
       artilheirosContainer.appendChild(li);
     });
-
-    // Ordena todos os jogadores por estrelas, sem limitar a 10
     const melhores = [...jogadores].sort((a, b) => (b.estrelas || 0) - (a.estrelas || 0));
     melhoresJogadoresContainer.innerHTML = melhores.length === 0 ? '<li>Nenhum jogador avaliado.</li>' : '';
     melhores.forEach((jog, index) => {
@@ -208,21 +213,29 @@
       melhoresJogadoresContainer.appendChild(li);
     });
   };
-
   const renderizarControleGols = () => {
     controleGolsContainer.innerHTML = '';
-    const jogadoresEmJogo = partidaAtual.jogadores;
-    if (jogadoresEmJogo.length === 0) {
-      controleGolsContainer.innerHTML = '<p>Sorteie os times ou inicie uma partida.</p>';
+    const jogadoresPresentes = jogadores.filter(j => j.presente);
+    if (jogadoresPresentes.length === 0) {
+      controleGolsContainer.innerHTML = '<p>Nenhum jogador marcado como presente.</p>';
       return;
     }
-    jogadoresEmJogo.forEach(jog => {
+
+    const jogadoresEmPartidaIds = new Set(partidaAtual.jogadores.map(j => j.id));
+
+    jogadoresPresentes.forEach(jog => {
       const cardTemplate = document.getElementById('template-card-gol');
       const cardNode = cardTemplate.content.cloneNode(true);
       const card = cardNode.querySelector('.card');
       card.dataset.id = jog.id;
       card.querySelector('h3').textContent = jog.nome;
-      card.querySelector('span').textContent = partidaAtual.gols[jog.id] || 0;
+      card.querySelector('span').textContent = golsDaRodada[jog.id] || 0;
+
+      const isPlaying = jogadoresEmPartidaIds.has(jog.id);
+      if (!isPlaying) {
+        card.querySelectorAll('.btn-gol').forEach(btn => btn.disabled = true);
+      }
+      
       controleGolsContainer.appendChild(cardNode);
     });
   };
@@ -290,17 +303,26 @@
       div.querySelector('h3').style.borderImage = `linear-gradient(90deg, ${colors[idx % colors.length]}, ${colors[(idx + 1) % colors.length]}) 1`;
       teamsGrid.appendChild(div);
     });
+    
+    reservesList.innerHTML = '';
     if (reservas.length > 0) {
       reservesContainer.style.display = 'block';
-      reservesList.innerHTML = '';
       reservas.forEach(jog => {
+        const isGoleiro = jog.setor.toUpperCase() === 'GOLEIRO';
         const li = document.createElement('li');
-        li.textContent = `${jog.nome} (${(jog.estrelas || 1).toFixed(1)})`;
+        li.className = 'player-item-draggable';
+        li.dataset.playerId = jog.id;
+        li.innerHTML = `
+            ${isGoleiro ? '<i class="fas fa-mitten"></i> ' : ''}
+            ${jog.nome} 
+            <span class="player-item-stars">(${(jog.estrelas || 1).toFixed(1)})</span>
+        `;
         reservesList.appendChild(li);
       });
     } else {
       reservesContainer.style.display = 'none';
     }
+
     const proximasPartidas = rodada.partidas.slice(rodada.partidaAtualIndex + 1);
     if (!isEditing && proximasPartidas.length > 0) {
       nextMatchesContainer.style.display = 'block';
@@ -322,20 +344,34 @@
     cronometroDisplay.textContent = `${minutos}:${segundos}`;
   };
 
-  // --- LÓGICA PRINCIPAL E DE SORTEIO ---
+  // --- LÓGICA PRINCIPAL E DE JOGO ---
+  const handleTogglePresenca = async (playerId) => {
+    const jogador = jogadores.find(j => j.id === playerId);
+    if (!jogador) return;
+
+    const novaPresenca = !jogador.presente;
+    const { error } = await supabaseClient
+        .from('jogadores')
+        .update({ presente: novaPresenca })
+        .eq('id', playerId);
+
+    if (error) {
+        showToast(`Erro ao atualizar presença de ${jogador.nome}`);
+        console.error(error);
+    } else {
+        jogador.presente = novaPresenca; // Atualiza o estado local para UI imediata
+        renderizarListaCompletaJogadores(); // Re-renderiza a lista
+    }
+  };
+
   const handleCadastro = async (e) => {
     e.preventDefault();
     const nome = e.target.elements.nome.value.trim();
     const setor = e.target.elements.setor.value;
     if (!nome || !setor) return showToast('Preencha todos os campos!');
     if (jogadores.some(j => j.nome.toLowerCase() === nome.toLowerCase())) return showToast('Jogador já cadastrado!');
-    const novoJogador = {
-      nome,
-      setor
-    };
-    const {
-      error
-    } = await supabaseClient.from('jogadores').insert(novoJogador);
+    const novoJogador = { nome, setor, presente: true };
+    const { error } = await supabaseClient.from('jogadores').insert(novoJogador);
     if (error) {
       console.error('Erro ao adicionar jogador:', error);
       return showToast('Erro ao adicionar jogador.');
@@ -344,9 +380,7 @@
     e.target.reset();
   };
   const handleDeletarJogador = async (id) => {
-    const {
-      error
-    } = await supabaseClient.from('jogadores').delete().eq('id', id);
+    const { error } = await supabaseClient.from('jogadores').delete().eq('id', id);
     if (error) {
       console.error('Erro ao deletar jogador:', error);
       return showToast('Erro ao excluir jogador.');
@@ -355,21 +389,23 @@
   };
   const handleSortearTimes = (e) => {
     e.preventDefault();
+    golsDaRodada = {};
+    
+    const jogadoresPresentes = jogadores.filter(j => j.presente);
     const jogadoresPorTime = parseInt(document.getElementById('jogadores-por-time').value, 10);
     const numTimes = parseInt(document.getElementById('numero-de-times').value, 10);
-    if (jogadores.length < jogadoresPorTime * numTimes) {
-      return showToast('Não há jogadores suficientes para preencher todos os times.');
+
+    if (jogadoresPresentes.length < jogadoresPorTime * numTimes) {
+      return showToast('Não há jogadores presentes suficientes para preencher os times.');
     }
-    const goleiros = jogadores.filter(j => j.setor.toUpperCase() === 'GOLEIRO');
-    const jogadoresDeLinha = jogadores.filter(j => j.setor.toUpperCase() !== 'GOLEIRO');
+    const goleiros = jogadoresPresentes.filter(j => j.setor.toUpperCase() === 'GOLEIRO');
+    const jogadoresDeLinha = jogadoresPresentes.filter(j => j.setor.toUpperCase() !== 'GOLEIRO');
     if (goleiros.length < numTimes) {
       showToast(`Atenção: Não há goleiros suficientes! ${goleiros.length} de ${numTimes} necessários.`);
     }
     const goleirosOrdenados = [...goleiros].sort((a, b) => (b.estrelas || 1) - (a.estrelas || 1));
     const linhaOrdenados = [...jogadoresDeLinha].sort((a, b) => (b.estrelas || 1) - (a.estrelas || 1));
-    times = Array.from({
-      length: numTimes
-    }, () => []);
+    times = Array.from({ length: numTimes }, () => []);
     for (let i = 0; i < numTimes; i++) {
       if (goleirosOrdenados.length > 0) {
         times[i].push(goleirosOrdenados.shift());
@@ -394,13 +430,13 @@
       timeIndex += direcao;
     }
     const jogadoresSorteadosIds = times.flat().map(j => j.id);
-    reservas = jogadores.filter(j => !jogadoresSorteadosIds.includes(j.id));
+    reservas = jogadoresPresentes.filter(j => !jogadoresSorteadosIds.includes(j.id));
     renderizarTimes();
     habilitarEdicaoTimes(true);
   };
   const handleSalvarTimesEditados = () => {
     const novosTimes = [];
-    const teamElements = document.querySelectorAll('.team');
+    const teamElements = document.querySelectorAll('.team .team-player-list');
     teamElements.forEach(teamEl => {
       const time = [];
       const playerElements = teamEl.querySelectorAll('.player-item-draggable');
@@ -413,7 +449,19 @@
       });
       novosTimes.push(time);
     });
+    const novosReservas = [];
+    const reserveElements = reservesList.querySelectorAll('.player-item-draggable');
+    reserveElements.forEach(playerEl => {
+        const playerId = playerEl.dataset.playerId;
+        const jogador = jogadores.find(j => j.id === playerId);
+        if (jogador) {
+            novosReservas.push(jogador);
+        }
+    });
+
     times = novosTimes;
+    reservas = novosReservas;
+
     habilitarEdicaoTimes(false);
     gerarPartidasDaRodada();
     renderizarTimes();
@@ -424,8 +472,8 @@
     document.getElementById('save-teams-controls').style.display = ativar ? 'block' : 'none';
     formSorteio.style.display = ativar ? 'none' : 'flex';
     if (ativar) {
-      const teamElements = document.querySelectorAll('.team-player-list');
-      teamElements.forEach(list => {
+      const lists = document.querySelectorAll('.team-player-list');
+      lists.forEach(list => {
         const sortable = new Sortable(list, {
           group: 'shared-teams',
           animation: 150,
@@ -468,31 +516,38 @@
     showToast("Partida pronta no Modo Jogo!");
   };
   const finalizarPartida = async () => {
+    if (partidaAtual.finalizada) return showToast("Esta partida já foi finalizada.");
+    
     clearInterval(cronometroInterval);
     cronometroInterval = null;
     jogoEmAndamento = false;
     partidaAtual.finalizada = true;
-    startPauseBtn.textContent = 'Iniciar';
-    cronometroDisplay.classList.add('finished');
+    startPauseBtn.textContent = 'Iniciar Timer';
+    cronometroDisplay.classList.remove('finished');
     showToast("Partida Finalizada! Votação liberada.");
-    const updates = partidaAtual.jogadores.map(jogadorDaPartida => {
-      const jogadorOriginal = jogadores.find(j => j.id === jogadorDaPartida.id);
+    
+    const jogadoresDestaPartida = partidaAtual.jogadores.map(j => j.id);
+    const updates = jogadoresDestaPartida.map(jogadorId => {
+      const jogadorOriginal = jogadores.find(j => j.id === jogadorId);
       if (jogadorOriginal) {
+        const golsNestaPartida = partidaAtual.gols[jogadorId] || 0;
+        const novosGols = (jogadorOriginal.gols || 0) + golsNestaPartida;
         const novasPartidas = (jogadorOriginal.partidas || 0) + 1;
-        const novosGols = (jogadorOriginal.gols || 0) + (partidaAtual.gols[jogadorDaPartida.id] || 0);
         return supabaseClient.from('jogadores').update({
-          partidas: novasPartidas,
-          gols: novosGols
-        }).eq('id', jogadorOriginal.id);
+          gols: novosGols,
+          partidas: novasPartidas
+        }).eq('id', jogadorId);
       }
       return Promise.resolve();
     });
+
     const results = await Promise.all(updates);
     const errorResult = results.find(res => res.error);
     if (errorResult) {
       console.error("Erro ao atualizar estatísticas da partida:", errorResult.error);
       showToast("Erro ao salvar dados da partida.");
     }
+    
     renderizarAvaliacoes();
     if (rodada.partidaAtualIndex < rodada.partidas.length - 1) {
       roundControls.style.display = 'block';
@@ -532,6 +587,7 @@
     if (resetCompleto) {
       times = [];
       reservas = [];
+      golsDaRodada = {};
       rodada = {
         partidas: [],
         partidaAtualIndex: -1,
@@ -550,7 +606,7 @@
     renderizarCronometro();
     renderizarControleGols();
     renderizarAvaliacoes();
-    startPauseBtn.textContent = 'Iniciar';
+    startPauseBtn.textContent = 'Iniciar Timer';
     cronometroDisplay.classList.remove('finished');
     if (resetCompleto) showToast("Rodada resetada.");
   };
@@ -616,14 +672,13 @@
       const setor = parts[1] ? parts[1].trim().toUpperCase() : 'AMIGOS';
       novosJogadores.push({
         nome,
-        setor
+        setor,
+        presente: true
       });
       importedCount++;
     });
     if (novosJogadores.length > 0) {
-      const {
-        error
-      } = await supabaseClient.from('jogadores').insert(novosJogadores);
+      const { error } = await supabaseClient.from('jogadores').insert(novosJogadores);
       if (error) {
         console.error("Erro na importação em massa:", error);
         return showToast("Erro ao importar jogadores.");
@@ -641,9 +696,7 @@
       showToast("Nome e setor não podem estar vazios.");
       return;
     }
-    const {
-      error
-    } = await supabaseClient.from('jogadores').update({
+    const { error } = await supabaseClient.from('jogadores').update({
       nome: novoNome,
       setor: novoSetor
     }).eq('id', playerId);
@@ -657,12 +710,7 @@
 
   // --- FUNÇÕES DE DADOS (SUPABASE) ---
   const carregarJogadores = async () => {
-    const {
-      data,
-      error
-    } = await supabaseClient.from('jogadores').select('*').order('nome', {
-      ascending: true
-    });
+    const { data, error } = await supabaseClient.from('jogadores').select('*').order('nome', { ascending: true });
     if (error) {
       console.error('Erro ao carregar jogadores:', error);
       showToast('Erro ao carregar jogadores.');
@@ -679,9 +727,19 @@
       event: '*',
       schema: 'public',
       table: 'jogadores'
-    }, (payload) => {
+    }, async (payload) => {
       console.log('Mudança em tempo real recebida!', payload);
-      carregarJogadores();
+      await carregarJogadores();
+
+      if (!rodada.finalizada) {
+        const jogadoresSorteadosIds = times.flat().map(j => j.id);
+        const jogadoresPresentes = jogadores.filter(j => j.presente);
+        reservas = jogadoresPresentes.filter(j => !jogadoresSorteadosIds.includes(j.id));
+        
+        renderizarTimes();
+        renderizarControleGols();
+      }
+
     }).subscribe();
   };
 
@@ -703,37 +761,65 @@
     nextMatchBtn.addEventListener('click', iniciarProximaPartida);
     salvarAvaliacaoBtn.addEventListener('click', handleSalvarAvaliacoes);
     salvarTimesEditadosBtn.addEventListener('click', handleSalvarTimesEditados);
+    finalizarPartidaBtn.addEventListener('click', finalizarPartida);
+
     listaCompletaJogadoresContainer.addEventListener('click', (e) => {
       const targetButton = e.target.closest('.btn-card-action');
-      if (!targetButton) return;
-      const card = targetButton.closest('.card');
-      const playerId = card.dataset.id;
-      const jogador = jogadores.find(j => j.id === playerId);
-      if (targetButton.classList.contains('btn-edit-player')) {
-        openEditModal(playerId);
-      } else if (targetButton.classList.contains('btn-delete-player')) {
-        openConfirmModal(`Tem certeza que deseja excluir ${jogador.nome}?`, () => {
-          handleDeletarJogador(playerId);
-        });
+      if (targetButton) {
+          const card = targetButton.closest('.card');
+          const playerId = card.dataset.id;
+          if (targetButton.classList.contains('btn-edit-player')) {
+              openEditModal(playerId);
+          } else if (targetButton.classList.contains('btn-delete-player')) {
+              const jogador = jogadores.find(j => j.id === playerId);
+              openConfirmModal(`Tem certeza que deseja excluir ${jogador.nome}?`, () => {
+                  handleDeletarJogador(playerId);
+              });
+          }
+          return;
+      }
+      
+      const toggle = e.target.closest('.toggle-presenca');
+      if (toggle) {
+          const card = toggle.closest('.card');
+          const playerId = card.dataset.id;
+          handleTogglePresenca(playerId);
       }
     });
+
     controleGolsContainer.addEventListener('click', (e) => {
-      if (jogoEmAndamento && e.target.classList.contains('btn-gol')) {
+      if (partidaAtual.finalizada) {
+        showToast("A partida já terminou. Inicie uma nova para adicionar gols.");
+        return;
+      }
+      if (e.target.classList.contains('btn-gol')) {
         const card = e.target.closest('.card');
         const id = card.dataset.id;
         const action = e.target.dataset.action;
         partidaAtual.gols[id] = partidaAtual.gols[id] || 0;
-        if (action === 'add') partidaAtual.gols[id]++;
-        else if (action === 'remove' && partidaAtual.gols[id] > 0) partidaAtual.gols[id]--;
-        card.querySelector('span').textContent = partidaAtual.gols[id];
+        golsDaRodada[id] = golsDaRodada[id] || 0;
+        if (action === 'add') {
+          partidaAtual.gols[id]++;
+          golsDaRodada[id]++;
+        } else if (action === 'remove' && golsDaRodada[id] > 0) {
+          if (partidaAtual.gols[id] > 0) {
+            partidaAtual.gols[id]--;
+            golsDaRodada[id]--;
+          } else {
+            showToast("Não é possível remover gols de partidas anteriores.");
+          }
+        }
+        card.querySelector('span').textContent = golsDaRodada[id];
       }
     });
+
     avaliacaoListaContainer.addEventListener('input', (e) => {
       if (e.target.classList.contains('rating-slider')) {
         const valueSpan = e.target.nextElementSibling;
         valueSpan.textContent = parseFloat(e.target.value).toFixed(1);
       }
     });
+    
     await carregarJogadores();
     escutarMudancasJogadores();
     mudarTela('cadastro');
