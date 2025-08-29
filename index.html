@@ -73,55 +73,44 @@
         <section id="sorteio" class="section">
           <form id="form-sorteio" class="form-inline">
             <div class="form-group">
-                <label for="jogadores-por-time">Jogadores por time:</label>
-                <input type="number" id="jogadores-por-time" value="5" min="1" />
-            </div>
-            <div class="form-group">
-                <label for="numero-de-times">Número de times:</label>
-                <input type="number" id="numero-de-times" value="2" min="2" />
+                <label for="numero-de-times">Dividir em quantos times:</label>
+                <input type="number" id="numero-de-times" value="4" min="2" />
             </div>
             <button type="submit" id="btn-sortear" class="btn-primary">Sortear Times</button>
           </form>
 
           <div class="round-controls" id="save-teams-controls" style="display: none;">
             <button id="btn-salvar-times-editados" class="btn-primary">
-              <i class="fas fa-save"></i> Salvar Times e Iniciar Rodada
+              <i class="fas fa-save"></i> Salvar Times e Iniciar Racha
             </button>
           </div>
 
-          <div id="round-controls" class="round-controls" style="display: none;">
-            <button id="btn-next-match" class="btn-primary">Iniciar Próxima Partida</button>
-          </div>
           <div class="teams-grid" id="teams-grid"></div>
           <div class="reserves-container" id="reserves-container" style="display: none;">
-            <h3><i class="fas fa-user-clock"></i> Reservas (Arraste para um time)</h3>
-            <ul id="reserves-list" class="team-player-list"></ul>
-          </div>
-          <div class="next-matches-container" id="next-matches-container" style="display: none;">
-            <h3><i class="fas fa-forward"></i> Próximas Partidas</h3>
-            <ul id="next-matches-list"></ul>
+            <h3><i class="fas fa-user-clock"></i> Jogadores sem time</h3>
+            <div id="reserves-list" class="team-player-list"></div>
           </div>
         </section>
 
         <section id="jogo" class="section">
           <div class="game-setup">
-            <label for="game-duration">Duração da Partida (minutos):</label>
-            <input type="number" id="game-duration" value="10" min="1">
+            <label for="game-duration">Duração do Racha (minutos):</label>
+            <input type="number" id="game-duration" value="90" min="1">
           </div>
           <div class="timer" id="cronometro">00:00</div>
           <div class="timer-buttons">
-            <button id="btn-start-pause" class="btn-primary">Iniciar Timer</button>
-            <button id="btn-finalizar-partida" class="btn-danger">Finalizar Partida</button>
-            <button id="btn-reset" class="btn-secondary">Resetar Rodada</button>
+            <button id="btn-start-pause" class="btn-primary">Iniciar Racha</button>
+            <button id="btn-finalizar-racha" class="btn-danger">Finalizar Racha</button>
+            <button id="btn-reset" class="btn-secondary">Resetar Tudo</button>
           </div>
           <h3>Controle de Gols (Jogadores Presentes)</h3>
           <div id="controle-gols" class="cards-container"></div>
         </section>
-
+        
         <section id="avaliacao" class="section">
           <div id="avaliacao-bloqueada" class="locked-state">
             <i class="fas fa-lock"></i>
-            <p>A votação será liberada após o término de uma partida no Modo Jogo.</p>
+            <p>A votação será liberada após o término de um racha.</p>
           </div>
           <div id="avaliacao-liberada" style="display: none;">
             <div class="voter-login">
@@ -136,11 +125,11 @@
         <section id="dashboard" class="section">
           <div class="dashboard-grid">
             <div class="ranking-list">
-              <h2><i class="fas fa-trophy"></i> Artilheiros</h2>
+              <h2><i class="fas fa-trophy"></i> Artilheiros do Racha</h2>
               <ol id="artilheiros-container"></ol>
             </div>
             <div class="ranking-list">
-              <h2><i class="fas fa-star"></i> Melhores Jogadores</h2>
+              <h2><i class="fas fa-star"></i> Melhores Jogadores (histórico)</h2>
               <ol id="melhores-jogadores-container"></ol>
             </div>
           </div>
