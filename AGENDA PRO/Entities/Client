@@ -1,0 +1,50 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome completo do cliente"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email do cliente"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "birth_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endereço do cliente"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observações sobre o cliente"
+    },
+    "business_id": {
+      "type": "string",
+      "description": "ID do estabelecimento associado"
+    },
+    "last_appointment": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data do último agendamento"
+    },
+    "total_appointments": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de agendamentos realizados"
+    }
+  },
+  "required": [
+    "name",
+    "phone",
+    "business_id"
+  ]
+}
